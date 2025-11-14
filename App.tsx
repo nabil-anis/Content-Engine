@@ -9,6 +9,16 @@ import { Topics } from './types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    if (error.message.includes('API key')) {
+      return 'Authentication error. Please ensure your API key is correctly configured in your deployment environment.';
+    }
+    return `Details: ${error.message}`;
+  }
+  return 'An unknown error occurred. Please check the console for more details.';
+};
+
 const StepCard: React.FC<{ children: React.ReactNode, className?: string, noPadding?: boolean}> = ({ children, className, noPadding }) => (
   <div className={`bg-white dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700/50 rounded-2xl shadow-lg shadow-slate-300/50 dark:shadow-black/20 ${noPadding ? '' : 'p-6 sm:p-8'} ${className}`}>
     {children}
@@ -73,7 +83,20 @@ const App: React.FC = () => {
         }
       });
       
-      const responseJson = JSON.parse(response.text) as Topics;
+      if (!response.text) {
+        throw new Error("The AI returned an empty response. Please try modifying your product name.");
+      }
+
+      let responseJson: Topics;
+      try {
+        // The model might wrap the JSON in markdown, so we clean it up.
+        const cleanedText = response.text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        responseJson = JSON.parse(cleanedText);
+      } catch (parseError) {
+        console.error("Failed to parse JSON response from model:", response.text);
+        throw new Error("The AI returned a response in an unexpected format. Please try again.");
+      }
+      
       setTopics(responseJson);
       if (responseJson && Object.keys(responseJson).length > 0) {
         setActiveCategory(Object.keys(responseJson)[0]);
@@ -81,7 +104,7 @@ const App: React.FC = () => {
 
     } catch (e) {
       console.error(e);
-      setError('Failed to generate topics. Please try again.');
+      setError(`Failed to generate topics. ${getErrorMessage(e)}`);
     } finally {
       setIsGeneratingTopics(false);
     }
@@ -131,13 +154,16 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
       });
       
       const markdownContent = response.text;
+      if (!markdownContent || !markdownContent.trim()) {
+        throw new Error("The AI returned an empty blog post. Please try this topic again, or select a different one.");
+      }
       setBlogMarkdown(markdownContent);
       const htmlContent = await marked.parse(markdownContent);
       setBlogContent(htmlContent);
 
     } catch (e) {
       console.error(e);
-      setError('Failed to generate the blog post. Please try again.');
+      setError(`Failed to generate the blog post. ${getErrorMessage(e)}`);
     } finally {
       setIsGeneratingBlog(false);
     }
