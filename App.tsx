@@ -9,15 +9,62 @@ import { Topics } from './types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+const categoryDisplayNames: { [key: string]: string } = {
+  general: 'General',
+  comparison: 'Comparison',
+  costFocused: 'Cost-Focused',
+  locationBased: 'Location-Based',
+  howTo: 'How-To',
+  other: 'Other',
+};
+
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     if (error.message.includes('API key')) {
       return 'Authentication error. Please ensure your API key is correctly configured in your deployment environment.';
     }
+    // Try to parse for a detailed API error message
+    try {
+      const match = error.message.match(/\{.*\}/);
+      if (match) {
+        const errorObj = JSON.parse(match[0]);
+        if (errorObj.error && errorObj.error.message) {
+          return `API Error: ${errorObj.error.message}`;
+        }
+      }
+    } catch (e) {
+      // Fallback to default message if parsing fails
+    }
     return `Details: ${error.message}`;
   }
   return 'An unknown error occurred. Please check the console for more details.';
 };
+
+const generateWithRetry = async (
+  generationRequest: () => Promise<any>,
+  onRetry: (attempt: number, delay: number) => void,
+  maxRetries: number = 3
+) => {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await generationRequest();
+    } catch (e: any) {
+      lastError = e;
+      const isOverloaded = e.message && (e.message.includes('503') || e.message.toLowerCase().includes('overloaded'));
+      
+      if (isOverloaded && attempt < maxRetries - 1) {
+        const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+        onRetry(attempt + 1, delay);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw e;
+    }
+  }
+  if (lastError) throw lastError;
+};
+
 
 const StepCard: React.FC<{ children: React.ReactNode, className?: string, noPadding?: boolean}> = ({ children, className, noPadding }) => (
   <div className={`bg-white dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700/50 rounded-2xl shadow-lg shadow-slate-300/50 dark:shadow-black/20 ${noPadding ? '' : 'p-6 sm:p-8'} ${className}`}>
@@ -26,7 +73,7 @@ const StepCard: React.FC<{ children: React.ReactNode, className?: string, noPadd
 );
 
 const App: React.FC = () => {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [businessContext, setBusinessContext] = useState('');
   const [contextType, setContextType] = useState<'description' | 'url'>('description');
 
@@ -40,6 +87,8 @@ const App: React.FC = () => {
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
   const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
+
 
   const handleContextSubmit = () => {
     if (!businessContext.trim()) {
@@ -60,27 +109,32 @@ const App: React.FC = () => {
     setActiveCategory(null);
     setBlogContent('');
     setIsGeneratingTopics(true);
+    setRetryMessage(null);
 
-    const prompt = `For the product "${productName}", generate 6-7 distinct buyer-intent blog post topics for each of the following categories: General, Comparison, Cost-Focused, Location-Based, How-To, and Other. For 'Location-Based' topics, you MUST include a placeholder like '[City]' or '[Region]'.`;
+    const prompt = `For the product "${productName}", generate 6-7 distinct buyer-intent blog post topics for each of the following categories: general, comparison, costFocused, locationBased, howTo, and other. For 'locationBased' topics, you MUST include a placeholder like '[City]' or '[Region]'.`;
+
+    const generationRequest = () => ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            "general": { type: Type.ARRAY, description: "General blog post topics.", items: { type: Type.STRING } },
+            "comparison": { type: Type.ARRAY, description: "Comparison-focused topics.", items: { type: Type.STRING } },
+            "costFocused": { type: Type.ARRAY, description: "Topics about cost, value, and pricing.", items: { type: Type.STRING } },
+            "locationBased": { type: Type.ARRAY, description: "Topics for specific locations with placeholders.", items: { type: Type.STRING } },
+            "howTo": { type: Type.ARRAY, description: "Instructional or educational topics.", items: { type: Type.STRING } },
+            "other": { type: Type.ARRAY, description: "Any other relevant buyer-intent topics.", items: { type: Type.STRING } }
+          },
+        }
+      }
+    });
 
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              "General": { type: Type.ARRAY, description: "General blog post topics.", items: { type: Type.STRING } },
-              "Comparison": { type: Type.ARRAY, description: "Comparison-focused topics.", items: { type: Type.STRING } },
-              "Cost-Focused": { type: Type.ARRAY, description: "Topics about cost, value, and pricing.", items: { type: Type.STRING } },
-              "Location-Based": { type: Type.ARRAY, description: "Topics for specific locations with placeholders.", items: { type: Type.STRING } },
-              "How-To": { type: Type.ARRAY, description: "Instructional or educational topics.", items: { type: Type.STRING } },
-              "Other": { type: Type.ARRAY, description: "Any other relevant buyer-intent topics.", items: { type: Type.STRING } }
-            },
-          }
-        }
+      const response = await generateWithRetry(generationRequest, (attempt, delay) => {
+        setRetryMessage(`The model is busy. Retrying in ${delay / 1000}s... (Attempt ${attempt})`);
       });
       
       if (!response.text) {
@@ -89,7 +143,6 @@ const App: React.FC = () => {
 
       let responseJson: Topics;
       try {
-        // The model might wrap the JSON in markdown, so we clean it up.
         const cleanedText = response.text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
         responseJson = JSON.parse(cleanedText);
       } catch (parseError) {
@@ -107,6 +160,7 @@ const App: React.FC = () => {
       setError(`Failed to generate topics. ${getErrorMessage(e)}`);
     } finally {
       setIsGeneratingTopics(false);
+      setRetryMessage(null);
     }
   }, [productName]);
 
@@ -115,14 +169,14 @@ const App: React.FC = () => {
     setBlogContent('');
     setBlogMarkdown('');
     setIsGeneratingBlog(true);
+    setRetryMessage(null);
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
     const businessInfo = contextType === 'url' 
         ? `The business's website is ${businessContext}.` 
         : `The business is described as: "${businessContext}".`;
-
-    try {
-      const prompt = `You are an expert SEO copywriter writing for a business. ${businessInfo}
+    
+    const prompt = `You are an expert SEO copywriter writing for a business. ${businessInfo}
 Your task is to write a comprehensive, SEO-optimized blog post for the product "${productName}" about the topic: "${topic}".
 
 The key angle of the article is to explain how your business (the one described above) helps the reader with this product. Weave mentions of the business's value proposition and how it helps the customer naturally into the article. Do not sound overly promotional.
@@ -148,9 +202,14 @@ A concise and compelling summary (155-160 characters) for search engine results.
 ### Suggested Keywords
 A comma-separated list of 5-7 relevant keywords for this blog post.`;
 
-      const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt
+    const generationRequest = () => ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ parts: [{ text: prompt }] }]
+    });
+
+    try {
+      const response = await generateWithRetry(generationRequest, (attempt, delay) => {
+        setRetryMessage(`The model is busy crafting your article. Retrying in ${delay / 1000}s... (Attempt ${attempt})`);
       });
       
       const markdownContent = response.text;
@@ -166,6 +225,7 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
       setError(`Failed to generate the blog post. ${getErrorMessage(e)}`);
     } finally {
       setIsGeneratingBlog(false);
+      setRetryMessage(null);
     }
   }, [productName, businessContext, contextType]);
 
@@ -180,16 +240,31 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
     });
   };
   
-  const renderStep1 = () => (
-    <div className="text-center animate-fade-in">
+  const renderStep0 = () => (
+    <div className="text-center animate-fade-in flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[50vh]">
       <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight">
         Your AI Content Studio
       </h1>
       <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-zinc-400 max-w-3xl mx-auto leading-relaxed">
-        Go from a single product name to a ready-to-publish, SEO-optimized blog post in minutes. Start below by telling us about your business.
+        Go from a single product name to a ready-to-publish, SEO-optimized blog post in minutes. Click below to get started.
       </p>
-
-      <StepCard className="mt-10 sm:mt-12 text-left max-w-2xl mx-auto">
+      <div className="mt-10 sm:mt-12">
+        <button
+          onClick={() => setStep(1)}
+          className="bg-blue-600 text-white font-semibold py-3 px-8 rounded-lg hover:bg-blue-700 transition-all duration-300 transform hover:-translate-y-px text-lg shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40"
+        >
+          Get Started
+        </button>
+      </div>
+      <p className="mt-16 text-sm text-slate-500 dark:text-zinc-500">
+        Built by <a href="https://www.noshaiautomation.com/" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline dark:text-blue-500">nosh</a>.
+      </p>
+    </div>
+  );
+  
+  const renderStep1 = () => (
+    <div className="animate-fade-in">
+      <StepCard className="text-left max-w-2xl mx-auto">
         <div className="mb-6">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">1. Provide Business Context</h2>
           <p className="text-slate-500 dark:text-zinc-400 mt-1">
@@ -326,33 +401,43 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
         <section className="animate-fade-in" aria-live="polite">
           <h2 className="text-lg font-semibold text-slate-700 dark:text-zinc-300 mb-3 px-2">Select a Topic to Write About</h2>
             {isGeneratingTopics ? (
-                <StepCard className="flex justify-center items-center py-16">
+                <StepCard className="flex flex-col justify-center items-center py-16">
                     <LoadingSpinner className="h-8 w-8"/>
+                    {retryMessage && <p className="mt-4 text-sm text-slate-500 dark:text-zinc-400">{retryMessage}</p>}
                 </StepCard>
             ) : topics && (
               <StepCard noPadding>
                 {/* Category Tabs */}
                 <div className="border-b border-slate-200 dark:border-zinc-700/50 px-2 sm:px-4">
-                    <div className="flex overflow-x-auto -mb-px">
+                    <div className="flex overflow-x-auto -mb-px" role="tablist" aria-label="Topic Categories">
                         {Object.keys(topics).map((category) => (
                             <button
                                 key={category}
+                                id={`tab-${category}`}
+                                role="tab"
+                                aria-controls={`panel-${category}`}
+                                aria-selected={activeCategory === category}
                                 onClick={() => setActiveCategory(category)}
-                                className={`px-4 py-3 text-sm font-semibold whitespace-nowrap transition-colors focus:outline-none 
+                                className={`px-4 py-3 text-sm font-semibold whitespace-nowrap transition-colors rounded-t-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900 
                                     ${activeCategory === category 
                                         ? 'text-blue-600 dark:text-blue-500 border-b-2 border-blue-600'
                                         : 'text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 border-b-2 border-transparent'
                                     }`}
-                                aria-pressed={activeCategory === category}
                             >
-                                {category}
+                                {categoryDisplayNames[category] || category}
                             </button>
                         ))}
                     </div>
                 </div>
                 
-                {/* Topic List */}
-                <div className="divide-y divide-slate-200 dark:divide-zinc-700/50">
+                {/* Topic List Panel */}
+                <div 
+                  key={activeCategory}
+                  id={`panel-${activeCategory || ''}`}
+                  role="tabpanel"
+                  aria-labelledby={`tab-${activeCategory || ''}`}
+                  className="divide-y divide-slate-200 dark:divide-zinc-700/50 animate-fade-in-fast"
+                >
                     {activeCategory && topics[activeCategory] && Array.isArray(topics[activeCategory]) && topics[activeCategory].length > 0 ? (
                         topics[activeCategory].map((topic, index) => (
                             <button
@@ -382,7 +467,9 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
                     <div className="text-center py-12">
                         <LoadingSpinner className="h-10 w-10 mx-auto"/>
                         <p className="mt-4 font-semibold text-slate-600 dark:text-zinc-300">Crafting your article...</p>
-                        <p className="mt-2 text-sm text-slate-500 dark:text-zinc-400">This can take up to a minute. Please wait.</p>
+                        <p className="mt-2 text-sm text-slate-500 dark:text-zinc-400">
+                          {retryMessage || 'This can take up to a minute. Please wait.'}
+                        </p>
                     </div>
                 ) : blogContent && (
                   <>
@@ -425,7 +512,9 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
       <Header />
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 pt-28 sm:pt-32 pb-12 sm:pb-16">
         <div className={`max-w-3xl mx-auto ${step > 1 ? 'space-y-10' : ''}`}>
-          {step === 1 ? renderStep1() : renderStep2()}
+          {step === 0 && renderStep0()}
+          {step === 1 && renderStep1()}
+          {step === 2 && renderStep2()}
         </div>
       </main>
       <Footer />
@@ -436,6 +525,13 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
         }
         .animate-fade-in {
           animation: fade-in 0.5s ease-out forwards;
+        }
+        @keyframes fade-in-fast {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in-fast {
+          animation: fade-in-fast 0.3s ease-out forwards;
         }
         /* Hide scrollbar for category tabs but allow scrolling */
         .flex.overflow-x-auto::-webkit-scrollbar {
