@@ -20,7 +20,7 @@ An AI-powered tool to generate buyer-intent topics and SEO-optimized blog posts,
 
 ## ⚙️ How to Use
 
-1.  **Start:** Click the "Generate Content Now" button on the homepage.
+1.  **Start:** Click the "Get Started" button on the homepage.
 2.  **Provide Context:** Enter a description of your business or a URL to your website. This helps the AI understand your brand.
 3.  **Enter Product:** Input the name of the product you want to write about.
 4.  **Generate Topics:** The AI will generate a list of categorized blog post ideas.
@@ -30,10 +30,10 @@ An AI-powered tool to generate buyer-intent topics and SEO-optimized blog posts,
 
 ## 🔑 Environment Variables
 
-To run this project, you will need a Google Gemini API key. This key should be available as an environment variable named `API_KEY`.
+To run this project, you will need a Google Gemini API key. This key should be available as an environment variable named `GEMINI_API_KEY`.
 
 ---
 
 <p align="center">
-  <small>Built by nosh.</small>
+  <small>Built by <a href="https://www.noshaiautomation.com/" target="_blank" rel="noopener noreferrer">nbl.</a></small>
 </p>

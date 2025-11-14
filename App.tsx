@@ -7,7 +7,7 @@ import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
 import { Topics } from './types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const categoryDisplayNames: { [key: string]: string } = {
   general: 'General',
@@ -266,7 +266,7 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
         </button>
       </div>
       <p className="mt-16 text-sm text-slate-500 dark:text-zinc-500">
-        Built by <a href="https://www.noshaiautomation.com/" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline dark:text-blue-500">nosh</a>.
+        Built by <a href="https://www.noshaiautomation.com/" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline dark:text-blue-500">Nosh</a>
       </p>
     </div>
   );
@@ -525,6 +525,13 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
           {step === 1 && renderStep1()}
           {step === 2 && renderStep2()}
         </div>
+        {step > 0 && (
+            <div className="max-w-3xl mx-auto mt-8">
+                <p className="text-center text-sm text-slate-500 dark:text-zinc-500">
+                  Built by <a href="https://www.noshaiautomation.com/" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline dark:text-blue-500">nbl.</a>
+                </p>
+            </div>
+        )}
       </main>
       <Footer />
       <style>{`
