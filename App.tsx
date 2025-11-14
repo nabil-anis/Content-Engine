@@ -12,7 +12,7 @@ type Topics = {
 };
 
 const StepCard: React.FC<{ children: React.ReactNode, className?: string, noPadding?: boolean}> = ({ children, className, noPadding }) => (
-  <div className={`bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-lg ${noPadding ? '' : 'p-6 sm:p-8'} ${className}`}>
+  <div className={`bg-white dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700/50 rounded-2xl shadow-lg shadow-slate-300/50 dark:shadow-black/20 ${noPadding ? '' : 'p-6 sm:p-8'} ${className}`}>
     {children}
   </div>
 );
@@ -170,7 +170,7 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
       <div className="space-y-6">
         <fieldset>
             <legend className="sr-only">Input Type</legend>
-            <div className="p-1.5 bg-slate-200/70 dark:bg-zinc-800 rounded-lg flex items-center justify-between gap-1">
+            <div className="p-1 bg-slate-200/70 dark:bg-zinc-900 rounded-lg flex items-center justify-between gap-1">
               {(['description', 'url'] as const).map((type) => (
                 <div key={type} className="w-full">
                   <input
@@ -188,8 +188,8 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
                   <label
                     htmlFor={`type-${type}`}
                     className="block w-full text-center cursor-pointer select-none rounded-md px-2 py-1.5 text-sm font-semibold transition-colors
-                                text-slate-600 dark:text-zinc-300 peer-checked:bg-white dark:peer-checked:bg-zinc-950 peer-checked:text-red-600 peer-checked:shadow-sm
-                                hover:bg-white/70 dark:hover:bg-zinc-700/50"
+                                text-slate-600 dark:text-zinc-300 peer-checked:bg-white dark:peer-checked:bg-zinc-700/50 peer-checked:text-slate-800 dark:peer-checked:text-zinc-50 peer-checked:shadow-sm
+                                hover:bg-white/70 dark:hover:bg-zinc-700/30"
                   >
                     {type === 'description' ? 'Business Description' : 'Website URL'}
                   </label>
@@ -205,8 +205,8 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
               id="businessContext"
               value={businessContext}
               onChange={(e) => setBusinessContext(e.target.value)}
-              placeholder="e.g., 'We are a specialty coffee roaster from Austin, TX that focuses on ethically sourced, single-origin beans...'"
-              className="w-full h-32 bg-slate-100 dark:bg-zinc-800 border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:outline-none focus:border-red-500 dark:focus:border-red-500 transition placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+              placeholder="e.g., 'We are a specialty coffee roaster from Austin, TX...'"
+              className="w-full h-32 bg-slate-100 dark:bg-zinc-700/40 border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 transition placeholder:text-slate-400 dark:placeholder:text-zinc-500"
               aria-label="Business Description"
             />
           </div>
@@ -219,17 +219,17 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
               value={businessContext}
               onChange={(e) => setBusinessContext(e.target.value)}
               placeholder="e.g., 'https://yourbusiness.com'"
-              className="w-full bg-slate-100 dark:bg-zinc-800 border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:outline-none focus:border-red-500 dark:focus:border-red-500 transition placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+              className="w-full bg-slate-100 dark:bg-zinc-700/40 border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 transition placeholder:text-slate-400 dark:placeholder:text-zinc-500"
               aria-label="Website URL"
             />
           </div>
         )}
       </div>
 
-      <div className="mt-8 border-t border-slate-200 dark:border-zinc-800 pt-6">
+      <div className="mt-8 border-t border-slate-200 dark:border-zinc-700/50 pt-6">
          <button
           onClick={handleContextSubmit}
-          className="bg-red-600 w-full text-white font-semibold py-3 px-6 rounded-lg hover:bg-red-700 transition-all duration-300 flex items-center justify-center disabled:bg-red-600/70 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform hover:-translate-y-px"
+          className="bg-blue-600 w-full text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-px"
           disabled={!businessContext.trim()}
         >
           Continue
@@ -260,17 +260,17 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
                 value={productName}
                 onChange={(e) => setProductName(e.target.value)}
                 placeholder="e.g., 'AeroPress Coffee Maker'"
-                className="w-full bg-slate-100 dark:bg-zinc-800 border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:outline-none focus:border-red-500 dark:focus:border-red-500 transition placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                className="w-full bg-slate-100 dark:bg-zinc-700/40 border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 transition placeholder:text-slate-400 dark:placeholder:text-zinc-500"
                 disabled={isGeneratingTopics}
                 aria-label="Product Name"
               />
             </div>
           </div>
 
-          <div className="mt-8 border-t border-slate-200 dark:border-zinc-800 pt-6">
+          <div className="mt-8 border-t border-slate-200 dark:border-zinc-700/50 pt-6">
              <button
               type="submit"
-              className="bg-red-600 w-full text-white font-semibold py-3 px-6 rounded-lg hover:bg-red-700 transition-all duration-300 flex items-center justify-center disabled:bg-red-600/70 disabled:cursor-not-allowed shadow-md hover:shadow-lg transform hover:-translate-y-px"
+              className="bg-blue-600 w-full text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-px"
               disabled={isGeneratingTopics || !productName.trim()}
             >
               {isGeneratingTopics ? <LoadingSpinner /> : 'Generate Topics'}
@@ -291,7 +291,7 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
             ) : topics && (
               <StepCard noPadding>
                 {/* Category Tabs */}
-                <div className="border-b border-slate-200 dark:border-zinc-800 px-2 sm:px-4">
+                <div className="border-b border-slate-200 dark:border-zinc-700/50 px-2 sm:px-4">
                     <div className="flex overflow-x-auto -mb-px">
                         {Object.keys(topics).map((category) => (
                             <button
@@ -299,7 +299,7 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
                                 onClick={() => setActiveCategory(category)}
                                 className={`px-4 py-3 text-sm font-semibold whitespace-nowrap transition-colors focus:outline-none 
                                     ${activeCategory === category 
-                                        ? 'text-red-600 dark:text-red-500 border-b-2 border-red-600 dark:border-red-500' 
+                                        ? 'text-blue-600 dark:text-blue-500 border-b-2 border-blue-600'
                                         : 'text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 border-b-2 border-transparent'
                                     }`}
                                 aria-pressed={activeCategory === category}
@@ -311,13 +311,13 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
                 </div>
                 
                 {/* Topic List */}
-                <div className="divide-y divide-slate-200/80 dark:divide-zinc-800">
+                <div className="divide-y divide-slate-200 dark:divide-zinc-700/50">
                     {activeCategory && topics[activeCategory] && Array.isArray(topics[activeCategory]) && topics[activeCategory].length > 0 ? (
                         topics[activeCategory].map((topic, index) => (
                             <button
                                 key={index}
                                 onClick={() => handleSelectTopic(topic)}
-                                className="w-full text-left px-6 sm:px-8 py-4 hover:bg-slate-100/70 dark:hover:bg-zinc-800/60 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-red-500 disabled:opacity-60"
+                                className="w-full text-left px-6 sm:px-8 py-4 hover:bg-slate-100/50 dark:hover:bg-zinc-900/50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 disabled:opacity-60"
                                 disabled={isGeneratingBlog}
                             >
                                 <p className="font-medium text-slate-800 dark:text-zinc-200">{topic}</p>
@@ -346,7 +346,7 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
                   <>
                     <button
                       onClick={handleCopyToClipboard}
-                      className="absolute top-4 right-4 z-10 bg-slate-100 hover:bg-slate-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-slate-600 dark:text-zinc-300 font-semibold py-2 px-3 rounded-lg transition-colors duration-200 flex items-center gap-2 text-sm border border-slate-200/80 dark:border-zinc-700 disabled:opacity-70 disabled:bg-slate-100"
+                      className="absolute top-4 right-4 z-10 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-slate-600 dark:text-zinc-300 font-semibold py-2 px-3 rounded-lg transition-colors duration-200 flex items-center gap-2 text-sm border border-slate-200 dark:border-zinc-600 disabled:opacity-70"
                       disabled={isCopied}
                       aria-label={isCopied ? "Copied to clipboard" : "Copy blog post markdown to clipboard"}
                     >
@@ -379,7 +379,7 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
   );
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-zinc-950 font-sans flex flex-col ${step === 0 ? 'hero-bg' : ''}`}>
+    <div className="min-h-screen bg-slate-100 dark:bg-zinc-900 font-sans flex flex-col">
       <Header />
       {step === 0 ? (
         <Hero onStart={() => setStep(1)} />
@@ -406,13 +406,6 @@ A comma-separated list of 5-7 relevant keywords for this blog post.`;
         .flex.overflow-x-auto {
           -ms-overflow-style: none;  /* IE and Edge */
           scrollbar-width: none;  /* Firefox */
-        }
-        .hero-bg {
-          background-image: radial-gradient(circle at 1px 1px, rgba(156, 163, 175, 0.2) 1px, transparent 0);
-          background-size: 20px 20px;
-        }
-        .dark .hero-bg {
-          background-image: radial-gradient(circle at 1px 1px, rgba(82, 82, 91, 0.2) 1px, transparent 0);
         }
       `}</style>
     </div>
